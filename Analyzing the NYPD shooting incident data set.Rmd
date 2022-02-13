@@ -1,0 +1,128 @@
+---
+title: "Analyzing the NYPD shooting incident data set"
+author: "Jin Shi"
+date: "2/13/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(ggplot2) 
+library(dplyr) 
+library(readr)
+library(knitr) 
+library(lubridate) 
+library(tidyverse)
+```
+
+## Load Data and data clean
+
+```{r}
+NYPDdata = read.csv('/Users/xuxiaobin/Desktop/sj-ds/浅谈data science/NYPD_Shooting_Incident_Data__Historic_.csv')
+```
+The data comes from a file called NYPD Shooting Incident Data (Historic) on the https://catalog.data.gov/dataset.
+
+Dropping additional variables which aren’t used for visualizations or analyses.
+```{r }
+NYPDdata= select (NYPDdata, -c(INCIDENT_KEY,X_COORD_CD,Y_COORD_CD,Latitude,Longitude,Lon_Lat))  
+NYPDdata = as.data.frame(unclass(NYPDdata),stringsAsFactors = TRUE)  
+summary(NYPDdata)
+```
+
+## Analysis
+
+### The area where the incident occurred
+```{r }
+ggplot(NYPDdata,aes(BORO)) + geom_bar(aes(fill=BORO)) + labs(title = "NYC Regional for shootings")  
+summary(NYPDdata$BORO)
+```
+
+####we can see the shooting rates in the New York City Borough####
+
+| BRONX| BROOKLYN |MANHTTAN |QUEENS|STATEN ISLAND| 
+|:-:|:-:|:-:|:-:|:-:| 
+|28.41%|41.27%|12.39%|14.98%|2.95%| 
+summary：We can see the overall regional distribution of shootings in the histogram above. As you can see from the histogram, BROOKLYN has the highest incidence of shootings in New York City, while STATEN ISLAND has the lowest incidence of shootings in New York City. BROOKLYN had 9,734 shootings while STATEN ISLAND had 696, 41.27 percent and 2.95 percent of 23,585 shootings.
+
+### The percentage that is defined as murder in New York City Borough
+```{r }
+x = NYPDdata %>% count(STATISTICAL_MURDER_FLAG,BORO) %>%group_by(BORO)%>% mutate(prop=prop.table(n))  
+y = pivot_wider(subset(x, select = -c(prop)), names_from = "STATISTICAL_MURDER_FLAG", values_from="n")  
+names(y) <- c("Boro", "Non-Murder", "Murder")  
+z = as.data.frame(t(as.matrix(y)))  
+colnames(z) = z[1,]  
+z = z[-1,]  
+barplot(as.matrix(z),xlab="BORO",ylab="counts",main="NYC Regional death rates for shootings",legend=c("Non-murder","Murder"),col=c("black","red"),cex.name=0.8)  
+summary(NYPDdata$STATISTICAL_MURDER_FLAG)
+```
+
+####we can see the deaths rates####
+
+|Non-Murder Rate| Murder Rate | 
+|:-:|:-:|
+|80.92%|19.08%|
+
+####we can see the gun deaths rates in the New York City Borough####
+
+```{r }
+kable(y)
+```
+summary:As we can see from the histogram, the death rate of gun cases is relatively low. By summing up, we can get a total of 4,500 gun deaths, accounting for 19.08% of the total gun deaths, so the proportion of gun deaths that did not result in death is 80.92%. From the histogram above, we can also see that there is no direct correlation between gun deaths and shootings in any region. The death rate is lower than the injury rate, regardless of which district the shooting takes place.
+
+### Occurance in month
+```{r}
+NYPDdata$OCCUR_DATE = as.Date(NYPDdata$OCCUR_DATE, '%m/%d/%Y')  
+OCCUR_DATE_M = factor(month(NYPDdata$OCCUR_DATE))  
+ggplot(NYPDdata,aes(OCCUR_DATE_M)) + geom_bar(aes(fill=OCCUR_DATE_M)) + labs(title = "'Distribution of Month")  
+summary(OCCUR_DATE_M)
+```
+
+#### we can see the shooting rates in the Month####
+
+|Jan. | Feb. |Mar. |Apr. |May|Jun. |Jul. |Aug.|Sep. |Oct. |Nov. |Dec. | 
+|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:| 
+|6.38%|4.87%|5.94%|6.99%|9.21%|10.42%|11.89%|11.76%|9.43%|8.56%|7.18%|7.37%|
+
+summary:You can see the month-by-month distribution of shootings in the histogram above. As can be seen from the histogram, shooting incidents occurred in every month, of which the number of shooting incidents was most prominent in July and August, with a positive distribution of the peak in July. But shootings picked up around the New Year. The total number of shootings in July was 2,805, and 11.89% of 23,585 shootings. There were 3,243 shootings in December and January, and 13.75 percent of all shootings. When high temperature or temperature rises, people's mental state is easy to produce fluctuations and abnormalities, so people's emotions are easy to lose control in summer, prone to shooting incidents. Conflicts such as the loss of social fairness and the widening gap between the rich and the poor tend to flare up during the New Year, making society more violent and prone to shootings. ### Murder rates in Months
+
+### Murder rates in Months
+```{r}
+New_NYPDdata=data.frame(NYPDdata,OCCUR_DATE_M)  
+a = New_NYPDdata %>% count(STATISTICAL_MURDER_FLAG,OCCUR_DATE_M ) %>%group_by( OCCUR_DATE_M)%>% mutate(prop=prop.table(n))  
+b = pivot_wider(subset(a, select = -c(prop)), names_from = "STATISTICAL_MURDER_FLAG", values_from="n")  
+names(y) <- c("OCCUR_DATE in month", "Non-Murder", "Murder")  
+c = as.data.frame(t(as.matrix(b)))  
+colnames(c) = c[1,]  
+c = c[-1,]  
+barplot(as.matrix(c),xlab="OCCUR_DATE in month",ylab="counts",main="Monthly shooting death rate",legend=c("Non-murder","Murder"),col=c("black","red"),cex.name=0.8)  
+kable(b)
+```
+
+#### we can see the daeth rates in the Month####
+
+| OCCUR_DATE_M | Non-Murder Rate | Murder Rate| 
+|:-:|:-:|:-:| 
+| Jan. |80.59%|19.41%|
+| Feb. |79.54%|20.46%| 
+|Mar. |80.74%|19.26%| 
+|Apr. |79.96%|20.04%| 
+|May|80.86%|19.14%| 
+|Jun. |81.26%|17.74%| 
+|Jul. |81.92%|18.08%|
+|Aug.|83.41%|16.59%|
+|Sep. |79.90%|20.10%|
+|Oct. |80.51%|19.49%| 
+|Nov. |80.32%|19.68%|
+|Dec. |78.08%|21.92%| 
+
+summary：The histogram above shows the monthly distribution of death rates for the entire shooting incident. As can be seen from the histogram, there is no direct relationship between the probability of shooting death and month. It does not mean that the death rate of shooting is higher in hot summer. We even conclude that August, when shooting incidents occur most frequently, is the month with the lowest shooting death rate of the whole year.
+
+### Linear Regression for crime modelling
+```{r}
+df = New_NYPDdata %>% group_by( BORO, OCCUR_DATE_M) %>% summarise(n = n())
+model.lm = lm(n~BORO+OCCUR_DATE_M,data=df)
+summary(model.lm)
+```
+summary:The model above can explain the overall monthly and regional distribution of shootings. The above model explains 77% of the variation in monthly and regional data. You can see that BROOKLYN has the highest incidence of crime in the entire city of New York. And July and August is the year of the highest incidence of cases.
+
+### Extra thinking
+We have some of these results, but we also need to think about whether the high incidence of shootings matches the number of people in that area, and if we analyze shootings per capita, do we get the same results? What are the criteria for determining that a shooting is a murder, and if there is a standard, is there still an artificial bias, and if there is no human bias and it's standardized, does the percentage of homicides in shootings change?
