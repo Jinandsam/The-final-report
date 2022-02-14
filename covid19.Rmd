@@ -1,0 +1,95 @@
+---
+title: "covid-19"
+author: "Jin Shi"
+date: "2/13/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+library(tidyverse)
+library(lubridate)
+library(grid)
+```
+
+## Load Data and data clean
+
+```{r}
+data_confirmed = read.csv('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv')
+
+data_confirmed = subset(data_confirmed, select = -c(Lat, Long_, UID, iso2, iso3, code3, FIPS, Admin2, Combined_Key, Country_Region) ) #Province_State
+data_confirmed$Province_State = factor(data_confirmed$Province_State)
+
+data_death = read.csv('https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv')
+data_death = subset(data_death, select = -c(Lat, Long_, UID, iso2, iso3, code3, FIPS, Admin2, Combined_Key, Country_Region, Population) ) #Province_State
+data_death$Province_State = factor(data_death$Province_State)
+```
+The data comes from the website https://github.com/CSSEGISandData/COVID-19.Dropping additional variables which aren’t used for visualizations or analyses.
+
+## The number of COVID-19 cases in the US in 2021
+
+```{r}
+pivot_data = data_confirmed %>%
+  pivot_longer(-c("Province_State"), names_to = "date", values_to = "sum")
+pivot_data$date = as.Date(ifelse(substr(pivot_data$date, 1, 1) == 'X', substr(pivot_data$date, 2, 8), pivot_data$date), "%m.%d.%y")
+pivot_data = filter(pivot_data, year(date) == 2021)
+pivot_data$month = month(pivot_data$date)
+plotdata = pivot_data %>% group_by(Province_State, month) %>% summarise(n = last(sum))
+pivot_data2 = pivot_data %>% group_by( month) %>% summarise(n = last(sum))
+f = ggplot(pivot_data2, aes(x=month, y=n)) + 
+  geom_line()+ labs(title = "COVID-19 confirmed in 2021")  
+f
+```
+
+## The number of COVID-19 deaths in the US in 2021
+
+```{r }
+pivot_data = data_death %>%
+  pivot_longer(-c("Province_State"), names_to = "date", values_to = "sum")
+pivot_data$date = as.Date(ifelse(substr(pivot_data$date, 1, 1) == 'X', substr(pivot_data$date, 2, 8), pivot_data$date), "%m.%d.%y")
+pivot_data = filter(pivot_data, year(date) == 2021)
+pivot_data$month = month(pivot_data$date)
+plotdata1 = pivot_data %>% group_by(Province_State, month) %>% summarise(n = last(sum))
+
+pivot_data2 = pivot_data %>% group_by( month) %>% summarise(n = last(sum))
+g = ggplot(pivot_data2, aes(x=month, y=n)) + 
+  geom_line()+ labs(title = "COVID-19 deaths in 2021")  
+g
+```
+
+## Compare the number of confirmed cases and deaths
+```{r}
+require(gridExtra)
+grid.arrange(f, g, ncol=2)
+```
+
+summary:The US is working to "flatten the curve" of the coronavirus pandemic. Flattening this curve would require a reduction in the number of COVID-19 cases per day. This helps prevent the system from being overwhelmed. When a country has fewer new COVID-19 cases today than the day before, it shows that the country is flattening the curve. On the trend line of total cases, a flat curve looks exactly like it sounds: flat. On this page of charts showing new cases per day, a flat curve will show a downward trend in the number of new cases per day. The analysis used 2021 data to visualize the number of new COVID-19 cases and deaths. This is calculated by daily values. This approach helps prevent significant events, such as changes in reporting methods, from skew the data. The graph above shows the rise in both confirmed COVID-19 cases and deaths in the SECOND half of 2021 in the United States.
+
+
+## COVID-19 cases by state  
+
+```{r}
+ggplot(data_confirmed,aes(Province_State)) + geom_bar(aes(fill=Province_State)) + labs(title = "COVID-19 cases by state  ")  
+```
+
+## COVID-19 deaths by state  
+
+```{r}
+ggplot(data_death,aes(Province_State)) + geom_bar(aes(fill=Province_State)) + labs(title = "COVID-19 deaths by state  ")  
+```
+
+## Linear Regression for covid19 modelling
+
+```{r}
+reg = lm(n~factor(Province_State), data=plotdata)
+summary(reg)
+
+reg = lm(n~factor(Province_State), data=plotdata1)
+summary(reg)
+```
+
+summary：As states across the US lift stay-at-home orders, reopen businesses and relax social distancing measures, the model shows whether each state is in an area of high incidence of COVID-19 cases. Federal guidelines recommend that states wait for a 14-day decline in recorded cases before they begin phasing in. When cases continue to rise or remain at high levels, premature withdrawal of social distancing measures could lead to a resurgence of new cases. In this model, certain states have relatively high rates of new cases and deaths in 2021. We call for some states that may need to re-enact their COVID-19 policies.
+
+## Extra thinking
+
+After doing some data analysis above, I was thinking about some biases. Should we consider whether the states with the highest number of COVID-19 cases match the population size of the region? Are states with high COVID-19 deaths commensurate with the region's medical standards? If we analyzed per capita COVID-19 diagnoses or deaths, would we get the same results?
